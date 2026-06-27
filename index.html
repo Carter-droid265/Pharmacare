@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PharmaCare</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#2D0A6E"/>
+<style>
+/* ── Reset & Base ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',system-ui,sans-serif;background:#F5F3FF;color:#1E1235;min-height:100vh;overflow-x:hidden;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:#A78BFA;border-radius:3px;}
+input,select,textarea,button{font-family:inherit;}
+button{cursor:pointer;}
+
+/* ── Animations ── */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.4)}70%{box-shadow:0 0 0 16px rgba(124,58,237,0)}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+@keyframes dotBounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
+@keyframes splashFade{to{opacity:0;pointer-events:none;}}
+
+.fade-in{animation:fadeIn .25s ease both;}
+.scale-in{animation:scaleIn .2s ease both;}
+.spin{display:inline-block;animation:spin .8s linear infinite;}
+.skeleton{
+  background:linear-gradient(90deg,#EDE9FE 25%,#F5F3FF 50%,#EDE9FE 75%);
+  background-size:400px 100%;
+  animation:shimmer 1.4s infinite;
+  border-radius:6px;
+}
+
+/* ── Layout ── */
+#root{display:flex;min-height:100vh;}
+.sidebar{width:220px;flex-shrink:0;background:#2D0A6E;display:flex;flex-direction:column;height:100vh;position:sticky;top:0;transition:width .25s;box-shadow:4px 0 20px rgba(45,10,110,.18);}
+.sidebar.collapsed{width:64px;}
+.main-col{flex:1;display:flex;flex-direction:column;min-width:0;}
+.topbar{background:#fff;border-bottom:1.5px solid #DDD6FE;padding:13px 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px;}
+main{flex:1;padding:24px;overflow-y:auto;}
+.footer-bar{padding:10px 24px;border-top:1px solid #DDD6FE;background:#fff;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#6B7280;}
+
+/* ── Sidebar Nav ── */
+.nav-logo{padding:22px 20px;border-bottom:1px solid rgba(255,255,255,.1);}
+.collapsed .nav-logo{padding:18px 12px;}
+.logo-text{font-weight:700;font-size:18px;color:#fff;font-family:'Space Grotesk',system-ui,sans-serif;}
+.logo-sub{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1px;margin-top:2px;}
+.nav-list{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:none;background:transparent;color:rgba(255,255,255,.6);font-size:13px;font-weight:400;cursor:pointer;transition:all .15s;text-align:left;width:100%;position:relative;}
+.nav-item.active{background:#7C3AED;color:#fff;font-weight:600;}
+.nav-item:hover:not(.active){background:rgba(255,255,255,.07);color:rgba(255,255,255,.85);}
+.collapsed .nav-item{justify-content:center;padding:10px 15px;}
+.nav-dot{position:absolute;top:8px;right:10px;width:8px;height:8px;border-radius:50%;background:#F59E0B;}
+.collapsed .nav-dot{right:8px;}
+.nav-icon{font-size:17px;flex-shrink:0;}
+.nav-user{padding:10px 12px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px;}
+.collapsed .nav-user{padding:10px 8px;}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:#7C3AED;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+.user-info{min-width:0;}
+.user-name{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-role{font-size:10px;color:rgba(255,255,255,.45);}
+
+/* ── Cards ── */
+.card{background:#fff;border:1.5px solid #DDD6FE;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(45,10,110,.07);}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-bottom:20px;}
+
+/* ── Table ── */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead tr{background:#2D0A6E;}
+th{padding:11px 14px;text-align:left;color:#fff;font-size:11px;font-weight:600;letter-spacing:.5px;white-space:nowrap;font-family:'Space Grotesk',system-ui,sans-serif;}
+td{padding:10px 14px;border-bottom:1px solid #DDD6FE;vertical-align:middle;}
+tr:nth-child(even) td{background:#F5F3FF;}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;transition:all .15s;cursor:pointer;}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-primary{background:#7C3AED;color:#fff;}
+.btn-primary:hover{background:#6D28D9;}
+.btn-outline{background:transparent;color:#7C3AED;border:1.5px solid #DDD6FE;}
+.btn-outline:hover{background:#F5F3FF;}
+.btn-ghost{background:#EDE9FE;color:#7C3AED;}
+.btn-ghost:hover{background:#DDD6FE;}
+.btn-danger{background:#FEE2E2;color:#DC2626;}
+.btn-success{background:#D1FAE5;color:#059669;}
+.btn:disabled{opacity:.55;cursor:not-allowed;}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;}
+.badge-amber{background:#FEF3C7;color:#D97706;}
+.badge-blue{background:#DBEAFE;color:#2563EB;}
+.badge-purple{background:#EDE9FE;color:#7C3AED;}
+.badge-green{background:#D1FAE5;color:#059669;}
+.badge-red{background:#FEE2E2;color:#DC2626;}
+.badge-gray{background:#F3F4F6;color:#6B7280;}
+
+/* ── Form elements ── */
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:12px;font-weight:600;color:#1E1235;}
+.field input,.field select,.field textarea{border:1.5px solid #DDD6FE;border-radius:9px;padding:9px 13px;font-size:13px;color:#1E1235;background:#fff;outline:none;transition:border-color .15s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#7C3AED;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* ── Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(45,10,110,.38);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal-box{background:#fff;border-radius:16px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(45,10,110,.28);}
+.modal-header{padding:18px 22px;border-bottom:1px solid #DDD6FE;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;}
+.modal-title{font-family:'Space Grotesk',system-ui,sans-serif;font-weight:700;font-size:16px;color:#2D0A6E;}
+.modal-close{background:#EDE9FE;border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:16px;color:#7C3AED;display:flex;align-items:center;justify-content:center;}
+.modal-body{padding:22px;display:flex;flex-direction:column;gap:14px;}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;background:#2D0A6E;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.2);display:flex;align-items:center;gap:8px;max-width:340px;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;}
+#toast.show{opacity:1;transform:translateY(0);}
+#toast.error{background:#DC2626;}
+
+/* ── Splash ── */
+#splash{position:fixed;inset:0;z-index:9998;background:linear-gradient(135deg,#2D0A6E 0%,#5B21B6 60%,#7C3AED 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s;}
+#splash.hide{opacity:0;pointer-events:none;}
+.splash-logo{width:90px;height:90px;border-radius:26px;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:42px;margin-bottom:28px;animation:scaleIn .5s cubic-bezier(.34,1.56,.64,1) both,pulse 2s ease-in-out .5s infinite;}
+.splash-name{font-family:'Space Grotesk',system-ui,sans-serif;font-size:38px;font-weight:700;color:#fff;letter-spacing:-.5px;}
+.splash-name span{color:#A78BFA;}
+.splash-sub{font-size:13px;color:rgba(255,255,255,.6);margin-top:6px;}
+.splash-dots{display:flex;gap:8px;margin-top:48px;}
+.splash-dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.5);animation:dotBounce 1.4s ease-in-out infinite;}
+.splash-dot:nth-child(2){animation-delay:.2s;}
+.splash-dot:nth-child(3){animation-delay:.4s;}
+.splash-credit{position:absolute;bottom:36px;text-align:center;}
+.splash-by{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+.splash-dev{font-family:'Space Grotesk',system-ui,sans-serif;font-size:16px;font-weight:700;color:rgba(255,255,255,.9);}
+.splash-ver{font-size:10px;color:rgba(167,139,250,.8);margin-top:2px;}
+
+/* ── Login ── */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#2D0A6E 0%,#5B21B6 100%);padding:20px;}
+.login-card{background:#fff;border-radius:20px;padding:36px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(45,10,110,.35);}
+.login-logo{width:56px;height:56px;border-radius:16px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 14px;}
+.login-title{font-family:'Space Grotesk',system-ui,sans-serif;font-size:24px;font-weight:700;color:#2D0A6E;text-align:center;}
+.login-sub{font-size:13px;color:#6B7280;text-align:center;margin-top:4px;margin-bottom:28px;}
+.login-title span{color:#7C3AED;}
+.alert-error{background:#FEE2E2;color:#DC2626;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;}
+.login-btn{width:100%;padding:13px;background:#7C3AED;color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;}
+.login-btn:hover{background:#6D28D9;}
+.login-btn:disabled{background:#A78BFA;}
+.login-footer{text-align:center;margin-top:20px;font-size:12px;color:#6B7280;}
+.login-api-note{font-family:monospace;font-size:11px;color:#7C3AED;}
+.login-credit{text-align:center;margin-top:16px;padding-top:16px;border-top:1px solid #DDD6FE;font-size:11px;color:#6B7280;}
+
+/* ── Section header ── */
+.section-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;}
+.section-hdr h2{font-family:'Space Grotesk',system-ui,sans-serif;font-size:20px;font-weight:700;color:#2D0A6E;}
+.section-hdr p{font-size:13px;color:#6B7280;margin-top:3px;}
+
+/* ── Status bar ── */
+.api-status{display:flex;align-items:center;gap:6px;}
+.status-dot{width:7px;height:7px;border-radius:50%;}
+.status-dot.online{background:#059669;}
+.status-dot.offline{background:#DC2626;}
+.status-dot.checking{background:#D97706;animation:pulse 1s infinite;}
+
+/* ── Order progress ── */
+.order-steps{display:flex;align-items:center;margin-bottom:4px;}
+.step-circle{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;}
+.step-line{flex:1;height:2px;}
+
+/* ── Mini bar chart ── */
+.chart-bars{display:flex;align-items:flex-end;gap:6px;height:80px;}
+.chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.chart-bar{width:100%;border-radius:4px 4px 0 0;background:linear-gradient(to top,#7C3AED,#A78BFA);min-height:4px;transition:height .4s ease;}
+.chart-label{font-size:10px;color:#6B7280;}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .sidebar{width:64px;}
+  .sidebar .nav-label,.sidebar .logo-text,.sidebar .logo-sub,.sidebar .user-info{display:none;}
+  .sidebar .nav-item{justify-content:center;padding:10px 15px;}
+  main{padding:16px;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .grid-2{grid-template-columns:1fr;}
+}
+
+/* ── Config panel ── */
+.config-bar{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px;margin:0 12px 12px;}
+.config-bar input{background:transparent;border:none;color:#fff;font-size:11px;flex:1;outline:none;}
+.config-bar input::placeholder{color:rgba(255,255,255,.4);}
+</style>
+</head>
+<body>
+
+<!-- ── SPLASH ─────────────────────────────────────────────────────────────── -->
+<div id="splash">
+  <div style="position:absolute;top:-80px;right:-80px;width:320px;height:320px;border-radius:50%;background:rgba(167,139,250,.1);"></div>
+  <div style="position:absolute;bottom:-60px;left:-60px;width:240px;height:240px;border-radius:50%;background:rgba(167,139,250,.07);"></div>
+  <div class="splash-logo">💊</div>
+  <div class="splash-name">Pharma<span>Care</span></div>
+  <div class="splash-sub">Smart Pharmacy Management System</div>
+  <div class="splash-dots">
+    <div class="splash-dot"></div>
+    <div class="splash-dot"></div>
+    <div class="splash-dot"></div>
+  </div>
+  <div class="splash-credit">
+    <div class="splash-by">Developed by</div>
+    <div class="splash-dev">Gerald Mdzalimbo</div>
+    <div class="splash-ver">v1.0.0 · Lilongwe, Malawi 🇲🇼</div>
+  </div>
+</div>
+
+<!-- ── LOGIN ──────────────────────────────────────────────────────────────── -->
+<div id="login-screen" style="display:none;">
+  <div class="login-card scale-in">
+    <div class="login-logo">💊</div>
+    <div class="login-title">Pharma<span>Care</span></div>
+    <div class="login-sub">Sign in to your pharmacy account</div>
+    <div id="login-error" class="alert-error" style="display:none;"></div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Phone Number</label>
+      <input id="inp-phone" type="tel" placeholder="+265 991 234567" autocomplete="username"/>
+    </div>
+    <div class="field" style="margin-bottom:4px;">
+      <label>Password</label>
+      <input id="inp-pass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-footer">
+      Backend: <span class="login-api-note" id="api-url-display"></span>
+    </div>
+    <div class="login-credit">
+      Developed by <strong style="color:#7C3AED;">Gerald Mdzalimbo</strong>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ──────────────────────────────────────────────────────────── -->
+<div id="root" style="display:none;">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="nav-logo">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:34px;height:34px;border-radius:10px;background:#7C3AED;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">💊</div>
+        <div class="nav-label">
+          <div class="logo-text">Pharma<span style="color:#A78BFA;">Care</span></div>
+          <div class="logo-sub">PHARMACY SYSTEM</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API URL config (collapsed in nav) -->
+    <div class="config-bar" id="api-config" title="Click to change backend URL">
+      <span style="font-size:12px;">🌐</span>
+      <input id="base-url-input" placeholder="http://localhost:8000" onchange="updateBaseUrl(this.value)" onfocus="this.select()"/>
+    </div>
+
+    <nav class="nav-list">
+      <button class="nav-item active" data-page="dashboard" onclick="navigate('dashboard',this)">
+        <span class="nav-icon">⬛</span><span class="nav-label">Dashboard</span>
+      </button>
+      <button class="nav-item" data-page="inventory" onclick="navigate('inventory',this)">
+        <span class="nav-icon">💊</span><span class="nav-label">Inventory</span>
+      </button>
+      <button class="nav-item" data-page="orders" onclick="navigate('orders',this)">
+        <span class="nav-icon">🛒</span><span class="nav-label">Orders</span>
+      </button>
+      <button class="nav-item" data-page="prescriptions" onclick="navigate('prescriptions',this)">
+        <span class="nav-icon">📄</span><span class="nav-label">Prescriptions</span>
+      </button>
+      <button class="nav-item" data-page="customers" onclick="navigate('customers',this)">
+        <span class="nav-icon">👥</span><span class="nav-label">Customers</span>
+      </button>
+      <button class="nav-item" data-page="suppliers" onclick="navigate('suppliers',this)">
+        <span class="nav-icon">🏭</span><span class="nav-label">Suppliers</span>
+      </button>
+      <button class="nav-item" data-page="reminders" onclick="navigate('reminders',this)">
+        <span class="nav-icon">⏰</span><span class="nav-label">Reminders</span>
+      </button>
+      <button class="nav-item" data-page="notifications" onclick="navigate('notifications',this)" id="nav-notif">
+        <span class="nav-icon">🔔</span><span class="nav-label">Alerts</span>
+      </button>
+    </nav>
+
+    <div class="nav-user">
+      <div class="user-avatar" id="sidebar-avatar">G</div>
+      <div class="user-info nav-label">
+        <div class="user-name" id="sidebar-name">Gerald Mdzalimbo</div>
+        <div class="user-role" id="sidebar-role">Admin</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN COLUMN -->
+  <div class="main-col">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:13px;">
+        <button class="btn btn-ghost btn-sm" onclick="toggleSidebar()">☰</button>
+        <div>
+          <div style="font-family:'Space Grotesk',system-ui,sans-serif;font-weight:700;font-size:16px;color:#2D0A6E;" id="page-title">Dashboard</div>
+          <div style="font-size:11px;color:#6B7280;" id="page-date"></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="background:#EDE9FE;border-radius:10px;padding:6px 12px;font-size:12px;display:flex;align-items:center;gap:6px;">
+          🎁 <span style="font-weight:600;color:#7C3AED;" id="topbar-points">0 pts</span>
+        </div>
+        <div class="api-status" title="API connection status">
+          <div class="status-dot checking" id="api-dot"></div>
+          <span style="font-size:11px;color:#6B7280;" id="api-status-text">Checking…</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('notifications',document.querySelector('[data-page=notifications]'))">
+          🔔 <span id="topbar-unread" style="display:none;background:#F59E0B;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;"></span>
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="doLogout()">↩ Logout</button>
+      </div>
+    </div>
+
+    <!-- PAGE CONTENT -->
+    <main id="page-content">
+      <!-- injected by JS -->
+    </main>
+
+    <div class="footer-bar">
+      <span>PharmaCare v1.0.0 · Developed by <strong style="color:#7C3AED;">Gerald Mdzalimbo</strong></span>
+      <span class="api-status">
+        <span class="status-dot online" id="footer-dot"></span>
+        <span id="footer-api-url" style="font-family:monospace;font-size:10px;"></span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL CONTAINER ── -->
+<div class="modal-overlay" id="modal-overlay" style="display:none;" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box scale-in" id="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Modal</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast">✓ <span id="toast-msg"></span></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+let BASE_URL = "http://localhost:8000";
+let TOKEN = null;
+let CURRENT_USER = null;
+let UNREAD_COUNT = 0;
+let CURRENT_PAGE = "dashboard";
+let SIDEBAR_COLLAPSED = false;
+let _toastTimer = null;
+let _apiOnline = false;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// API LAYER
+// ═══════════════════════════════════════════════════════════════════════════
+async function apiFetch(path, opts = {}) {
+  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+  if (TOKEN) headers["Authorization"] = `Bearer ${TOKEN}`;
+  const url = `${BASE_URL}/api/v1${path}`;
+  const res = await fetch(url, { ...opts, headers });
+  if (res.status === 401) { TOKEN = null; showLogin(); throw new Error("Unauthorized"); }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+async function apiLogin(phone, password) {
+  const body = new URLSearchParams({ username: phone, password });
+  const res = await fetch(`${BASE_URL}/api/v1/auth/login`, { method: "POST", body });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Login failed" }));
+    throw new Error(err.detail || "Login failed");
+  }
+  return res.json();
+}
+
+// Auth
+const api = {
+  login:  (phone, pw) => apiLogin(phone, pw),
+  me:     ()         => apiFetch("/auth/me"),
+  register: (d)      => apiFetch("/auth/register", { method:"POST", body:JSON.stringify(d) }),
+
+  // Inventory
+  getProducts:    (q={}) => apiFetch("/inventory/products" + (Object.keys(q).length ? "?"+new URLSearchParams(q) : "")),
+  createProduct:  (d)    => apiFetch("/inventory/products",   { method:"POST",  body:JSON.stringify(d) }),
+  updateProduct:  (id,d) => apiFetch(`/inventory/products/${id}`, { method:"PATCH", body:JSON.stringify(d) }),
+  getCategories:  ()     => apiFetch("/inventory/categories"),
+  createCategory: (d)    => apiFetch("/inventory/categories", { method:"POST",  body:JSON.stringify(d) }),
+  getSuppliers:   ()     => apiFetch("/inventory/suppliers"),
+  createSupplier: (d)    => apiFetch("/inventory/suppliers",  { method:"POST",  body:JSON.stringify(d) }),
+  addBatch:       (d)    => apiFetch("/inventory/batches",    { method:"POST",  body:JSON.stringify(d) }),
+  getExpiring:    (days=30) => apiFetch(`/inventory/expiring-soon?days=${days}`),
+
+  // Orders
+  getOrders:    ()        => apiFetch("/orders"),
+  createOrder:  (d)       => apiFetch("/orders", { method:"POST", body:JSON.stringify(d) }),
+  advanceOrder: (id, st)  => apiFetch(`/orders/${id}/status?new_status=${st}`, { method:"PATCH" }),
+
+  // Prescriptions
+  getPrescriptions:   ()      => apiFetch("/prescriptions"),
+  uploadPrescription: (url,n) => apiFetch(`/prescriptions?image_url=${encodeURIComponent(url)}&notes=${encodeURIComponent(n)}`, { method:"POST" }),
+  verifyPrescription: (id)    => apiFetch(`/prescriptions/${id}/verify`, { method:"PATCH" }),
+
+  // Reminders
+  getReminders:   ()  => apiFetch("/reminders"),
+  createReminder: (d) => apiFetch("/reminders", { method:"POST", body:JSON.stringify(d) }),
+  deleteReminder: (id)=> apiFetch(`/reminders/${id}`, { method:"DELETE" }),
+
+  // Dashboard
+  getDashboard: () => apiFetch("/dashboard/summary"),
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FALLBACK DATA
+// ═══════════════════════════════════════════════════════════════════════════
+const FB = {
+  dashboard: { total_sales_today:42860, orders_today:6, low_stock_count:2, expiring_soon_count:1, total_customers:5, pending_orders:2 },
+  products: [
+    { id:1, name:"Amoxicillin 500mg", generic_name:"Amoxicillin", category_id:1, selling_price:850, cost_price:420, reorder_level:50, requires_prescription:true, is_active:true, total_stock:240 },
+    { id:2, name:"Paracetamol 500mg", generic_name:"Paracetamol", category_id:2, selling_price:150, cost_price:60, reorder_level:30, requires_prescription:false, is_active:true, total_stock:8 },
+    { id:3, name:"Metformin 500mg", generic_name:"Metformin HCl", category_id:3, selling_price:1200, cost_price:580, reorder_level:40, requires_prescription:true, is_active:true, total_stock:120 },
+    { id:4, name:"Amlodipine 5mg", generic_name:"Amlodipine", category_id:4, selling_price:1800, cost_price:890, reorder_level:25, requires_prescription:true, is_active:true, total_stock:3 },
+    { id:5, name:"Ibuprofen 400mg", generic_name:"Ibuprofen", category_id:2, selling_price:280, cost_price:110, reorder_level:50, requires_prescription:false, is_active:true, total_stock:180 },
+  ],
+  orders: [
+    { id:1001, customer_id:1, status:"pending",   total_amount:2150, discount:0, points_earned:2150, notes:"", created_at:"2026-06-25T08:12:00", items:[{ id:1,product_id:1,quantity:2,unit_price:850,subtotal:1700 }] },
+    { id:1002, customer_id:2, status:"ready",     total_amount:1200, discount:0, points_earned:1200, notes:"", created_at:"2026-06-25T09:45:00", items:[] },
+    { id:1003, customer_id:3, status:"collected", total_amount:1510, discount:0, points_earned:1510, notes:"", created_at:"2026-06-25T10:30:00", items:[] },
+  ],
+  prescriptions: [
+    { id:1, customer_id:1, image_url:"", notes:"Amoxicillin refill", is_verified:false, created_at:"2026-06-25T08:10:00" },
+    { id:2, customer_id:2, image_url:"", notes:"BP medication",       is_verified:false, created_at:"2026-06-25T11:03:00" },
+    { id:3, customer_id:3, image_url:"", notes:"Diabetes meds",       is_verified:true,  created_at:"2026-06-24T14:22:00" },
+  ],
+  reminders: [
+    { id:1, label:"Morning BP Tablet",   product_id:4, remind_time:"07:00", days:"1,2,3,4,5,6,7", is_active:true, created_at:"2026-06-01T00:00:00" },
+    { id:2, label:"Diabetes Medication", product_id:3, remind_time:"08:30", days:"1,2,3,4,5,6,7", is_active:true, created_at:"2026-06-01T00:00:00" },
+  ],
+  suppliers: [
+    { id:1, name:"PharmaCo MW",  contact_name:"David Mhango",   phone:"+265 993 112233", email:"", is_active:true, created_at:"2026-01-01T00:00:00" },
+    { id:2, name:"MedSupply Ltd", contact_name:"Patricia Lungu", phone:"+265 881 223344", email:"", is_active:true, created_at:"2026-01-01T00:00:00" },
+    { id:3, name:"AfriMeds",      contact_name:"Thomas Chirwa",  phone:"+265 991 334455", email:"", is_active:true, created_at:"2026-01-01T00:00:00" },
+  ],
+  customers: [
+    { id:1, full_name:"Mary Phiri",     phone:"+265 881 001122", loyalty_points:450, role:"customer", is_active:true, created_at:"2026-01-10T00:00:00" },
+    { id:2, full_name:"John Kachingwe", phone:"+265 991 223344", loyalty_points:120, role:"customer", is_active:true, created_at:"2026-03-05T00:00:00" },
+    { id:3, full_name:"Grace Mwale",    phone:"+265 881 334455", loyalty_points:810, role:"customer", is_active:true, created_at:"2025-11-22T00:00:00" },
+  ],
+  salesChart: [42000,38500,55200,61800,48300,72500,29100],
+  notifications: [
+    { id:1, title:"Low Stock Alert",    body:"Amlodipine 5mg has only 3 units left.",         type:"warning", time:"10 min ago", read:false },
+    { id:2, title:"New Prescription",   body:"Peter Nyirenda uploaded a prescription.",        type:"rx",      time:"1 hr ago",  read:false },
+    { id:3, title:"Payment Confirmed",  body:"Airtel Money MWK 2,150 received — Order #1001.", type:"payment", time:"2 hrs ago", read:true  },
+    { id:4, title:"Order Ready",        body:"Order #1002 ready for John Kachingwe.",          type:"order",   time:"3 hrs ago", read:true  },
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+const fmt = (n) => Number(n||0).toLocaleString();
+const fmtDate = (s) => s ? new Date(s).toLocaleString() : "—";
+const fmtDay  = (s) => s ? new Date(s).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}) : "—";
+const stockOf = (p) => p.total_stock ?? p.stock ?? 0;
+const initials = (n="") => n.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
+
+function badge(text, cls) {
+  return `<span class="badge badge-${cls}">${text}</span>`;
+}
+function statusBadge(st) {
+  const m = { pending:"amber", reviewing:"blue", approved:"purple", ready:"green",
+               collected:"gray", cancelled:"red", active:"green", verified:"green",
+               low:"red", expiring:"amber" };
+  const labels = { pending:"Pending", reviewing:"Reviewing", approved:"Approved",
+                   ready:"Ready", collected:"Collected", cancelled:"Cancelled",
+                   active:"Active", verified:"Verified", low:"Low Stock", expiring:"Expiring" };
+  return badge(labels[st]||st, m[st]||"gray");
+}
+function rxBadge() { return badge("Rx","blue"); }
+function skeletonRow(cols) {
+  return `<tr>${Array(cols).fill(`<td><div class="skeleton" style="height:14px;"></div></td>`).join("")}</tr>`;
+}
+function dayLabel(d) {
+  if (!d) return "—";
+  if (d==="1,2,3,4,5,6,7") return "Every day";
+  if (d==="1,2,3,4,5") return "Weekdays";
+  if (d==="6,7") return "Weekends";
+  return d;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UI PRIMITIVES
+// ═══════════════════════════════════════════════════════════════════════════
+function toast(msg, isError=false) {
+  const el = document.getElementById("toast");
+  el.className = isError ? "error" : "";
+  el.innerHTML = `${isError?"✕":"✓"} <span>${msg}</span>`;
+  el.classList.add("show");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
+}
+
+function openModal(title, bodyHTML) {
+  document.getElementById("modal-title").textContent = title;
+  document.getElementById("modal-body").innerHTML = bodyHTML;
+  document.getElementById("modal-overlay").style.display = "flex";
+}
+function closeModal() { document.getElementById("modal-overlay").style.display = "none"; }
+
+function setLoading(id, cols) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = Array(4).fill(skeletonRow(cols)).join("");
+}
+
+function setCardLoading(id, count=3) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = Array(count).fill(`
+    <div class="card" style="animation:none;">
+      <div class="skeleton" style="height:18px;width:60%;margin-bottom:12px;"></div>
+      <div class="skeleton" style="height:12px;margin-bottom:8px;"></div>
+      <div class="skeleton" style="height:12px;width:80%;"></div>
+    </div>
+  `).join("");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// API STATUS CHECK
+// ═══════════════════════════════════════════════════════════════════════════
+async function checkApiStatus() {
+  const dot = document.getElementById("api-dot");
+  const txt = document.getElementById("api-status-text");
+  if (dot) { dot.className = "status-dot checking"; }
+  if (txt) txt.textContent = "Checking…";
+  try {
+    const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(4000) });
+    _apiOnline = res.ok;
+  } catch { _apiOnline = false; }
+  if (dot) { dot.className = `status-dot ${_apiOnline?"online":"offline"}`; }
+  if (txt) txt.textContent = _apiOnline ? "API Online" : "Offline (demo)";
+  const fd = document.getElementById("footer-dot");
+  if (fd) fd.className = `status-dot ${_apiOnline?"online":"offline"}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTH FLOW
+// ═══════════════════════════════════════════════════════════════════════════
+function showLogin() {
+  document.getElementById("root").style.display = "none";
+  document.getElementById("login-screen").style.display = "flex";
+  document.getElementById("api-url-display").textContent = BASE_URL;
+}
+
+function showApp() {
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("root").style.display = "flex";
+  // update topbar date
+  document.getElementById("page-date").textContent = new Date().toLocaleDateString("en-MW",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  document.getElementById("footer-api-url").textContent = BASE_URL;
+  document.getElementById("base-url-input").value = BASE_URL;
+  checkApiStatus();
+  setInterval(checkApiStatus, 30000);
+}
+
+async function doLogin() {
+  const phone = document.getElementById("inp-phone").value.trim();
+  const pass  = document.getElementById("inp-pass").value;
+  const btn   = document.getElementById("login-btn");
+  const errEl = document.getElementById("login-error");
+  if (!phone || !pass) { showError(errEl, "Enter phone number and password."); return; }
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spin">⟳</span> Signing in…`;
+  errEl.style.display = "none";
+  try {
+    const data = await api.login(phone, pass);
+    TOKEN = data.access_token;
+    try { CURRENT_USER = await api.me(); } catch { CURRENT_USER = { id:1, full_name:"Gerald Mdzalimbo", role:"admin", loyalty_points:340 }; }
+    afterLogin();
+  } catch (e) {
+    // Demo mode — allow any credentials
+    CURRENT_USER = { id:1, full_name:"Gerald Mdzalimbo", role:"admin", loyalty_points:340 };
+    TOKEN = "demo-mode";
+    showError(errEl, `Backend unreachable — running in demo mode.`);
+    setTimeout(() => { errEl.style.display="none"; afterLogin(); }, 1800);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "Sign In";
+  }
+}
+
+function afterLogin() {
+  const u = CURRENT_USER;
+  document.getElementById("sidebar-name").textContent = u.full_name || "User";
+  document.getElementById("sidebar-role").textContent = (u.role||"staff").charAt(0).toUpperCase()+(u.role||"staff").slice(1);
+  document.getElementById("sidebar-avatar").textContent = initials(u.full_name||"U");
+  document.getElementById("topbar-points").textContent = `${u.loyalty_points||0} pts`;
+  showApp();
+  navigate("dashboard", document.querySelector('[data-page="dashboard"]'));
+}
+
+function doLogout() {
+  TOKEN = null; CURRENT_USER = null;
+  showLogin();
+}
+
+function showError(el, msg) { el.textContent = msg; el.style.display = "block"; }
+
+// Enter key on login
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("inp-pass").addEventListener("keydown", e => { if (e.key==="Enter") doLogin(); });
+  document.getElementById("inp-phone").addEventListener("keydown", e => { if (e.key==="Enter") doLogin(); });
+});
+
+function updateBaseUrl(v) {
+  BASE_URL = v.trim().replace(/\/$/, "") || "http://localhost:8000";
+  document.getElementById("footer-api-url").textContent = BASE_URL;
+  document.getElementById("api-url-display").textContent = BASE_URL;
+  checkApiStatus();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════
+function navigate(page, el) {
+  document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+  if (el) el.classList.add("active");
+  CURRENT_PAGE = page;
+  document.getElementById("page-title").textContent = page.charAt(0).toUpperCase()+page.slice(1);
+  const pages = { dashboard, inventory, orders, prescriptions, customers, suppliers, reminders, notifications };
+  const fn = pages[page];
+  if (fn) fn();
+}
+
+function toggleSidebar() {
+  SIDEBAR_COLLAPSED = !SIDEBAR_COLLAPSED;
+  document.getElementById("sidebar").classList.toggle("collapsed", SIDEBAR_COLLAPSED);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MINI CHART
+// ═══════════════════════════════════════════════════════════════════════════
+function barChart(data) {
+  const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const max = Math.max(...data, 1);
+  return `<div class="chart-bars">
+    ${data.map((v,i) => `
+      <div class="chart-bar-wrap">
+        <div class="chart-bar" style="height:${Math.max((v/max)*68,4)}px;"></div>
+        <div class="chart-label">${days[i]}</div>
+      </div>
+    `).join("")}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════
+async function dashboard() {
+  const pc = document.getElementById("page-content");
+  pc.innerHTML = `<div class="fade-in">
+    <div class="section-hdr"><div><h2>Dashboard</h2><p>Today's pharmacy overview</p></div></div>
+    <div class="stat-grid" id="stat-grid">
+      ${Array(5).fill(`<div class="card"><div class="skeleton" style="height:42px;width:42px;border-radius:11px;margin-bottom:14px;"></div><div class="skeleton" style="height:26px;width:60%;margin-bottom:6px;"></div><div class="skeleton" style="height:12px;width:80%;"></div></div>`).join("")}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+      <div class="card" id="sales-chart-card"><div class="skeleton" style="height:110px;"></div></div>
+      <div class="card" id="recent-orders-card"><div class="skeleton" style="height:110px;"></div></div>
+    </div>
+    <div id="alert-banner"></div>
+  </div>`;
+
+  let [sum, ords] = [FB.dashboard, FB.orders];
+  try { [sum, ords] = await Promise.all([api.getDashboard(), api.getOrders()]); } catch {}
+
+  document.getElementById("stat-grid").innerHTML = `
+    ${statCard("💰","Sales Today",`MK ${fmt(Math.round(sum.total_sales_today/1000))}K`,"#7C3AED","8")}
+    ${statCard("🛒","Orders Today",sum.orders_today,`#5B21B6`,`${sum.pending_orders} pending`)}
+    ${statCard("⚠️","Low Stock",sum.low_stock_count,"#D97706","items need reorder")}
+    ${statCard("📄","Expiring Soon",sum.expiring_soon_count,"#DC2626","within 30 days")}
+    ${statCard("👥","Customers",sum.total_customers,"#059669","registered")}
+  `;
+
+  document.getElementById("sales-chart-card").innerHTML = `
+    <div style="font-family:'Space Grotesk',system-ui,sans-serif;font-weight:700;font-size:14px;color:#2D0A6E;margin-bottom:4px;">Weekly Sales</div>
+    <div style="font-size:12px;color:#6B7280;margin-bottom:12px;">MWK this week</div>
+    ${barChart(FB.salesChart)}
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #DDD6FE;display:flex;justify-content:space-between;font-size:12px;">
+      <span style="color:#6B7280;">Total this week</span>
+      <span style="font-weight:700;color:#7C3AED;">MK ${fmt(FB.salesChart.reduce((a,b)=>a+b,0)/1000)}K</span>
+    </div>`;
+
+  const recent = ords.slice(0,5);
+  document.getElementById("recent-orders-card").innerHTML = `
+    <div style="font-family:'Space Grotesk',system-ui,sans-serif;font-weight:700;font-size:14px;color:#2D0A6E;margin-bottom:12px;">Recent Orders</div>
+    ${recent.length===0 ? `<div style="text-align:center;color:#6B7280;padding:20px;">No orders yet</div>` :
+      recent.map(o=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#F5F3FF;border-radius:9px;margin-bottom:7px;">
+          <div>
+            <div style="font-size:12px;font-weight:600;">Order #${o.id}</div>
+            <div style="font-size:11px;color:#6B7280;">${fmtDate(o.created_at)}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:12px;font-weight:700;color:#7C3AED;">MK ${fmt(o.total_amount)}</div>
+            ${statusBadge(o.status)}
+          </div>
+        </div>`).join("")}`;
+
+  if (sum.low_stock_count > 0 || sum.expiring_soon_count > 0) {
+    document.getElementById("alert-banner").innerHTML = `
+      <div class="card" style="border-color:#FEF3C7;background:#FFFBEB;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:18px;">⚠️</span>
+          <span style="font-family:'Space Grotesk',system-ui,sans-serif;font-weight:700;font-size:14px;color:#D97706;">
+            Action Required — ${sum.low_stock_count} low stock · ${sum.expiring_soon_count} expiring soon
+          </span>
+        </div>
+        <div style="font-size:13px;color:#6B7280;">Go to Inventory to reorder and remove expired stock.</div>
+      </div>`;
+  }
+}
+
+function statCard(icon, label, value, color, sub) {
+  const subIsNum = typeof sub === "string" && (sub.includes("pending") || sub.includes("items") || sub.includes("days") || sub.includes("registered") || sub.includes("reorder"));
+  return `
+    <div class="card">
+      <div style="width:42px;height:42px;border-radius:11px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px;">${icon}</div>
+      <div style="font-size:26px;font-weight:700;color:${color};font-family:'Space Grotesk',system-ui,sans-serif;">${value}</div>
+      <div style="font-size:12px;color:#6B7280;margin-top:2px;">${label}</div>
+      ${sub?`<div style="font-size:11px;color:#A78BFA;margin-top:3px;">${sub}</div>`:""}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: INVENTORY
+// ═══════════════════════════════════════════════════════════════════════════
+async function inventory() {
+  const pc = document.getElementById("page-content");
+  pc.innerHTML = `<div class="fade-in">
+    <div class="section-hdr">
+      <div><h2>Inventory</h2><p id="inv-sub">Loading…</p></div>
+      <button class="btn btn-primary" onclick="openAddProduct()">+ Add Product</button>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+      <input id="inv-search" placeholder="Search products…" oninput="filterInventory()"
+        style="flex:1;min-width:180px;border:1.5px solid #DDD6FE;border-radius:9px;padding:9px 13px;font-size:13px;outline:none;"/>
+      <button class="btn btn-primary btn-sm" id="f-all"   onclick="setInvFilter('all')">All</button>
+      <button class="btn btn-outline btn-sm" id="f-low"   onclick="setInvFilter('low')">⚠️ Low Stock</button>
+      <button class="btn btn-outline btn-sm" id="f-rx"    onclick="setInvFilter('rx')">💊 Rx Only</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Product</th><th>Stock</th><th>Price (MWK)</th><th>Cost (MWK)</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="inv-tbody">${Array(4).fill(skeletonRow(6)).join("")}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+
+  let _invFilter = "all";
+  let _products = [];
+
+  window._setInvFilter = (f) => {
+    _invFilter = f;
+    ["all","low","rx"].forEach(x => document.getElementById(`f-${x}`)?.classList.toggle("btn-primary", x===f));
+    ["all","low","rx"].forEach(x => document.getElementById(`f-${x}`)?.classList.toggle("btn-outline", x!==f));
+    renderInventory();
+  };
+  window.setInvFilter = window._setInvFilter;
+
+  function renderInventory() {
+    const q = (document.getElementById("inv-search")?.value||"").toLowerCase();
+    const rows = _products.filter(p => {
+      const m = p.name.toLowerCase().includes(q)||(p.generic_name||"").toLowerCase().includes(q);
+      if (_invFilter==="low") return m && stockOf(p)<=p.reorder_level;
+      if (_invFilter==="rx")  return m && p.requires_prescription;
+      return m;
+    });
+    const tbody = document.getElementById("inv-tbody");
+    if (!tbody) return;
+    if (rows.length===0) { tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:30px;color:#6B7280;">No products found</td></tr>`; return; }
+    tbody.innerHTML = rows.map((p,i) => {
+      const st = stockOf(p);
+      const status = st===0 ? "low" : st<=p.reorder_level ? "low" : "active";
+      return `<tr>
+        <td><div style="font-weight:600;">${p.name}</div><div style="font-size:11px;color:#6B7280;">${p.generic_name||""}</div></td>
+        <td><span style="font-weight:700;color:${st<=p.reorder_level?"#DC2626":"#059669"};">${st}</span><span style="color:#6B7280;font-size:11px;"> / ${p.reorder_level} min</span></td>
+        <td style="font-weight:600;color:#7C3AED;">${fmt(p.selling_price)}</td>
+        <td style="color:#6B7280;">${fmt(p.cost_price)}</td>
+        <td>${statusBadge(status)}${p.requires_prescription?` ${rxBadge()}`:" "}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="openEditProduct(${p.id})">Edit</button>
+          <button class="btn btn-sm" style="background:#EDE9FE;color:#5B21B6;margin-left:4px;" onclick="openAddBatch(${p.id},'${p.name}')">+ Stock</button>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+  window.filterInventory = renderInventory;
+
+  try { _products = await api.getProducts(); } catch { _products = FB.products; }
+  const low = _products.filter(p=>stockOf(p)<=p.reorder_level).length;
+  const sub = document.getElementById("inv-sub");
+  if (sub) sub.textContent = `${_products.length} products · ${low} low stock`;
+  renderInventory();
+}
+
+function openAddProduct() {
+  openModal("Add New Product", `
+    <div class="grid-2">
+      <div class="field"><label>Product Name *</label><input id="m-name" placeholder="Amoxicillin 500mg"/></div>
+      <div class="field"><label>Generic Name</label><input id="m-generic" placeholder="Amoxicillin"/></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>Selling Price (MWK) *</label><input id="m-sell" type="number" placeholder="850"/></div>
+      <div class="field"><label>Cost Price (MWK)</label><input id="m-cost" type="number" placeholder="420"/></div>
+    </div>
+    <div class="field"><label>Reorder Level</label><input id="m-reorder" type="number" placeholder="20" value="20"/></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+      <input type="checkbox" id="m-rx"/> Requires Prescription
+    </label>
+    <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:6px;">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddProduct()">Save Product</button>
+    </div>`);
+}
+
+async function submitAddProduct() {
+  const name = document.getElementById("m-name")?.value.trim();
+  const sell = parseFloat(document.getElementById("m-sell")?.value||0);
+  if (!name || !sell) { toast("Name and selling price are required", true); return; }
+  const btn = document.querySelector("#modal-body .btn-primary");
+  if (btn) { btn.disabled=true; btn.innerHTML=`<span class="spin">⟳</span> Saving…`; }
+  try {
+    await api.createProduct({
+      name, generic_name: document.getElementById("m-generic")?.value||"",
+      selling_price: sell,
+      cost_price: parseFloat(document.getElementById("m-cost")?.value||0),
+      reorder_level: parseInt(document.getElementById("m-reorder")?.value||20),
+      requires_prescription: document.getElementById("m-rx")?.checked||false,
+      unit: "tablet",
+    });
+    toast("Product added ✓"); closeModal(); inventory();
+  } catch (e) { toast(e.message||"Save failed", true); if(btn){btn.disabled=false;btn.innerHTML="Save Product";} }
+}
+
+function openAddBatch(productId, productName) {
+  openModal(`Add Stock — ${productName}`, `
+    <div class="field"><label>Quantity *</label><input id="m-qty" type="number" placeholder="100"/></div>
+    <div class="field"><label>Cost Price (MWK)</label><input id="m-batchcost" type="number" placeholder="0"/></div>
+    <div class="field"><label>Batch Number</label><input id="m-batch" placeholder="BATCH-001"/></div>
+    <div class="field"><label>Expiry Date</label><input id="m-expiry" type="date"/></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:6px;">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitBatch(${productId})">Add Stock</button>
+    </div>`);
+}
+
+async function submitBatch(productId) {
+  const qty = parseInt(document.getElementById("m-qty")?.value||0);
+  if (!qty) { toast("Quantity is required", true); return; }
+  const btn = document.querySelector("#modal-body .btn-primary");
+  if (btn) { btn.disabled=true; btn.innerHTML=`<span class="spin">⟳</span> Saving…`; }
+  try {
+    await api.addBatch({
+      product_id: productId,
+      quantity: qty,
+      cost_price: parseFloat(document.getElementById("m-batchcost")?.value||0),
+      batch_number: document.getElementById("m-batch")?.value||null,
+      expiry_date: document.getElementById("m-expiry")?.value||null,
+    });
+    toast("Stock added ✓"); closeModal(); inventory();
+  } catch (e) { toast(e.message||"Failed", true); if(btn){btn.disabled=false;btn.innerHTML="Add Stock";} }
+}
+
+function openEditProduct(id) {
+  toast("Edit form — save triggers PATCH /inventory/products/"+id);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: ORDERS
+// ═══════════════════════════════════════════════════════════════════════════
+const ORDER_FLOW = ["pending","reviewing","approved","ready","collected"];
+let _ordersData = [];
+
+async function orders() {
+  const pc = document.getElementById("page-content");
+  pc.innerHTML = `<div class="fade-in">
+    <div class="section-hdr"><div><h2>Orders</h2><p id="ord-sub">Loading…</p></div></div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;" id="ord-filters"></div>
+    <div id="ord-list" style="display:flex;flex-direction:column;gap:10px;">
+      ${Array(3).fill(`<div class="card"><div class="skeleton" style="height:60px;"></div></div>`).join("")}
+    </div>
+  </div>`;
+
+  let _filter = "all";
+
+  function setFilter(f) {
+    _filter = f;
+    document.getElementById("ord-filters").innerHTML = renderFilters();
+    renderOrds();
+  }
+
+  function renderFilters() {
+    return ["all",...ORDER_FLOW].map(s => {
+      const cnt = s==="all" ? _ordersData.length : _ordersData.filter(o=>o.status===s).length;
+      const active = _filter===s;
+      return `<button class="btn btn-sm ${active?"btn-primary":"btn-outline"}" onclick="window._ordSetFilter('${s}')" style="text-transform:capitalize;">${s} (${cnt})</button>`;
+    }).join("");
+  }
+  window._ordSetFilter = setFilter;
+
+  function renderOrds() {
+    const list = _ordersData.filter(o => _filter==="all" || o.status===_filter);
+    const el = document.getElementById("ord-list");
+    if (!el) return;
+    if (list.length===0) { el.innerHTML=`<div class="card" style="text-align:center;padding:40px;"><div style="font-size:32px;margin-bottom:10px;">📭</div><div style="color:#6B7280;">No ${_filter==="all"?"":""+_filter+" "}orders</div></div>`; return; }
+    el.innerHTML = list.map(o => `
+      <div class="card" style="cursor:pointer;" onclick="openOrderDetail(${o.id})">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+          <div>
+            <div style="font-weight:600;font-size:14px;">Order #${o.id}</div>
+            <div style="font-size:11px;color:#6B7280;">${fmtDate(o.created_at)}</div>
+            <div style="font-size:11px;color:#6B7280;margin-top:2px;">${(o.items||[]).length} item${(o.items||[]).length!==1?"s":""}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-weight:700;color:#7C3AED;font-size:15px;">MK ${fmt(o.total_amount)}</div>
+            <div style="margin-top:4px;">${statusBadge(o.status)}</div>
+          </div>
+        </div>
+      </div>`).join("");
+  }
+
+  window.openOrderDetail = (id) => {
+    const o = _ordersData.find(x=>x.id===id);
+    if (!o) return;
+    const curIdx = ORDER_FLOW.indexOf(o.status);
+    const steps = ORDER_FLOW.map((s,i) => `
+      <div style="display:flex;align-items:center;flex:1;">
+        <div class="step-circle" style="background:${i<=curIdx?"#7C3AED":"#EDE9FE"};color:${i<=curIdx?"#fff":"#A78BFA"};">${i+1}</div>
+        ${i<ORDER_FLOW.length-1?`<div class="step-line" style="background:${i<curIdx?"#7C3AED":"#EDE9FE"};"></div>`:""}
+      </div>`).join("");
+    const stepLabels = ORDER_FLOW.map(s=>`<span style="font-size:9px;color:#6B7280;text-transform:capitalize;text-align:center;">${s}</span>`).join("");
+    const canAdvance = o.status!=="collected" && o.status!=="cancelled";
+    const nextStatus = canAdvance ? ORDER_FLOW[curIdx+1] : null;
+
+    openModal(`Order #${o.id}`,`
+      <div class="grid-2">
+        <div style="background:#F5F3FF;border-radius:10px;padding:10px 12px;">
+          <div style="font-size:11px;color:#6B7280;">Customer ID</div>
+          <div style="font-weight:600;">#${o.customer_id}</div>
+        </div>
+        <div style="background:#F5F3FF;border-radius:10px;padding:10px 12px;">
+          <div style="font-size:11px;color:#6B7280;">Total</div>
+          <div style="font-weight:700;color:#7C3AED;">MK ${fmt(o.total_amount)}</div>
+        </div>
+        <div style="background:#F5F3FF;border-radius:10px;padding:10px 12px;">
+          <div style="font-size:11px;color:#6B7280;">Discount</div>
+          <div style="font-weight:600;">MK ${fmt(o.discount||0)}</div>
+        </div>
+        <div style="background:#F5F3FF;border-radius:10px;padding:10px 12px;">
+          <div style="font-size:11px;color:#6B7280;">Points Earned</div>
+          <div style="font-weight:600;">${o.points_earned||0} pts</div>
+        </div>
+      </div>
+      ${(o.items||[]).length>0?`
+        <div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Items</div>
+          ${o.items.map(it=>`
+            <div style="display:flex;justify-content:space-between;padding:7px 12px;background:#F5F3FF;border-radius:8px;font-size:13px;margin-bottom:5px;">
+              <span>Product #${it.product_id} × ${it.quantity}</span>
+              <span style="font-weight:600;">MK ${fmt(it.subtotal)}</span>
+            </div>`).join("")}
+        </div>`:""}
+      <div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Progress</div>
+        <div style="display:flex;align-items:center;">${steps}</div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px;">${stepLabels}</div>
+      </div>
+      ${canAdvance?`<button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="advanceOrder(${o.id},'${nextStatus}')">→ Move to ${nextStatus}</button>`:""}
+    `);
+  };
+
+  try { _ordersData = await api.getOrders(); } catch { _ordersData = FB.orders; }
+  const pending = _ordersData.filter(o=>o.status==="pending").length;
+  const ready   = _ordersData.filter(o=>o.status==="ready").length;
+  const sub = document.getElementById("ord-sub");
+  if (sub) sub.textContent = `${pending} pending · ${ready} ready for pickup`;
+  document.getElementById("ord-filters").innerHTML = renderFilters();
+  renderOrds();
+}
+
+async function advanceOrder(id, nextStatus) {
+  const btn = document.querySelector(`#modal-body .btn-primary`);
+  if (btn) { btn.disabled=true; btn.innerHTML=`<span class="spin">⟳</span> Updating…`; }
+  try {
+    await api.advanceOrder(id, nextStatus);
+    toast(`Order moved to ${nextStatus} ✓`);
+  } catch {
+    toast(`Status updated (offline mode) ✓`);
+  }
+  closeModal();
+  orders();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: PRESCRIPTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+async function prescriptions() {
+  const pc = document.getElementById("page-content");
+  pc.innerHTML = `<div class="fade-in">
+    <div class="section-hdr">
+      <div><h2>Prescriptions</h2><p id="rx-sub">Loading…</p></div>
+      <button class="btn btn-outline" onclick="openUploadRx()">+ Upload Rx</button>
+    </div>
+    <div class="card-grid" id="rx-grid">
+      ${Array(3).fill(`<div class="card"><div class="skeleton" style="height:100px;margin-bottom:12px;"></div><div class="skeleton" style="height:14px;margin-bottom:8px;"></div><div class="skeleton" style="height:11px;width:70%;"></div></div>`).join("")}
+    </div>
+  </div>`;
+
+  let rxList = [];
+  try { rxList = await api.getPrescriptions(); } catch { rxList = FB.prescriptions; }
+
+  const pending = rxList.filter(r=>!r.is_verified).length;
+  const sub = document.getElementById("rx-sub");
+  if (sub) sub.textContent = `${pending} awaiting review`;
+
+  document.getElementById("rx-grid").innerHTML = rxList.map(rx => `
+    <div class="card" style="border-color:${!rx.is_verified?"#FEF3C7":"#DDD6FE"};">
+      <div style="height:100px;background:linear-gradient(135deg,#EDE9FE,#F5F3FF);border-radius:10px;margin-bottom:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+        <span style="font-size:28px;">📄</span>
+        <span style="font-size:10px;color:#6B7280;">Prescription #${rx.id}</span>
+      </div>
+      <div style="font-weight:600;margin-bottom:3px;">Customer #${rx.customer_id}</div>
+      <div style="font-size:12px;color:#6B7280;margin-bottom:6px;">${rx.notes||"No notes"}</div>
+      <div style="font-size:11px;color:#6B7280;margin-bottom:12px;">${fmtDate(rx.created_at)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        ${statusBadge(rx.is_verified?"verified":"pending")}
+        ${!rx.is_verified?`<button class="btn btn-primary btn-sm" onclick="verifyRx(${rx.id})">✓ Verify</button>`:""}
+      </div>
+    </div>`).join("");
+}
+
+async function verifyRx(id) {
+  try { await api.verifyPrescription(id); toast("Prescription verified ✓"); }
+  catch { toast("Verified (offline mode) ✓"); }
+  prescriptions();
+}
+
+function openUploadRx() {
+  openModal("Upload Prescription", `
+    <div class="field"><label>Image URL (Cloudinary)</label><input id="m-rx-url" placeholder="https://res.cloudinary.com/…"/></div>
+    <div class="field"><label>Notes</label><textarea id="m-rx-notes" rows="3" style="border:1.5px solid #DDD6FE;border-radius:9px;padding:9px 13px;font-size:13px;resize:vertical;" placeholder="Reason for prescription…"></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitRx()">Upload</button>
+    </div>`);
+}
+
+async function submitRx() {
+  const url   = document.getElementById("m-rx-url")?.value.trim();
+  const notes = document.getElementById("m-rx-notes")?.value.trim();
+  if (!url) { toast("Image URL is required",true); return; }
+  const btn = document.querySelector("#modal-body .btn-primary");
+  if (btn) { btn.disabled=true; btn.innerHTML=`<span class="spin">⟳</span> Uploading…`; }
+  try { await api.uploadPrescription(url, notes||""); toast("Prescription uploaded ✓"); closeModal(); prescriptions(); }
+  catch (e) { toast(e.message||"Failed",true); if(btn){btn.disabled=false;btn.innerHTML="Upload";} }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: CUSTOMERS
+// ═══════════════════════════════════════════════════════════════════════════
+async function customers() {
+  const pc = document.getElementById("page-content");
+  pc.innerHTML = `<div class="fade-in">
+    <div class="section-hdr">
+      <div><h2>Customers</h2><p id="cust-sub">Loading…</p></div>
+      <button class="btn btn-primary" onclick="openRegisterCustomer()">+ Register Customer</button>
+    </div>
+    <input id="cust-search" placeholder="Search by name or phone…" oninput="filterCustomers()"
+      style="max-width:360px;width:100%;border:1.5px solid #DDD6FE;border-radius:9px;padding:9px 13px;font-size:13px;outline:none;margin-bottom:16px;display:block;"/>
+    <div class="card-grid" id="cust-grid">
+      ${Array(3).fill(`<div class="card"><div class="skeleton" style="height:60px;margin-bottom:12px;"></div><div class="skeleton" style="height:40px;"></div></div>`).join("")}
+    </div>
+  </div>`;
+
+  let custs = [];
+  // Customers endpoint not in FastAPI yet — use fallback list + try register endpoint
+  try {
+    // Try to get users from a potential /users endpoint or fall back gracefully
+    custs = await apiFetch("/users").catch(() => FB.customers);
+  } catch { custs = FB.customers; }
+  if (!Array.isArray(custs)) custs = FB.customers;
+
+  const sub = document.getElementById("cust-sub");
+  if (sub) sub.textContent = `${custs.length} registered customers`;
+
+  function renderCustomers() {
+    const q = (document.getElementById("cust-search")?.value||"").toLowerCase();
+    const filtered = custs.filter(c=>(c.full_name||"").toLowerCase().includes(q)||(c.phone||"").includes(q));
+    const el = document.getElementById("cust-grid");
+    if (!el) return;
+    el.innerHTML = filtered.map(c=>`
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div style="width:44px;height:44px;border-radius:50%;background:#7C3AED;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;flex-shrink:0;">${initials(c.full_name||"U")}</div>
+          <div>
+            <div style="font-weight:600;">${c.full_name||"Unknown"}</div>
+            <div style="font-size:12px;color:#6B7280;">${c.phone||"—"}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="background:#F5F3FF;border-radius:8px;padding:8px 10px;">
+            <div style="font-size:10px;color:#6B7280;">Loyalty Points</div>
+            <div style="font-weight:700;color:#7C3AED;font-size:16px;">${c.loyalty_points||0}</div>
+          </div>
+          <div style="background:#F5F3FF;border-radius:8px;padding:8px 10px;">
+            <div style="font-size:10px;color:#6B7280;">Status</div>
+            ${statusBadge(c.is_active?"active":"cancelled")}
+          </div>
+        </div>
+        <div style="font-size:11px;color:#6B7280;margin-top:10px;">Joined ${fmtDay(c.created_at)}</div>
+      </div>`).join("");
+  }
+  window.filterCustomers = renderCustomers;
+  renderCustomers();
+}
+
+function openRegisterCustomer() {
+  openModal("Register Customer", `
+    <div class="field"><label>Full Name *</label><input id="m-cname" placeholder="Mary Phiri"/></div>
+    <div class="field"><label>Phone Number *</label><input id="m-cphone" placeholder="+265 881 001122"/></div>
+    <div class="field"><label>Email (optional)</label><input id="m-cemail" type="email" placeholder="mary@example.com"/></div>
+    <div class="field"><label>Password *</label><input id="m-cpass" type="password" placeholder="Temporary password"/></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitRegisterCustomer()">Register</button>
+    </div>`);
+}
+
+async function submitRegisterCustomer() {
+  const full_name = document.getElementById("m-cname")?.value.trim();
+  const phone     = document.getElementById("m-cphone")?.value.trim();
+  const password  = document.getElementById("m-cpass")?.value;
+  if (!full_name||!phone||!password) { toast("All required fields must be filled",true); return; }
+  const btn = document.querySelector("#modal-body .btn-primary");
+  if (btn) { btn.disabled=true; btn.innerHTML=`<span class="spin">⟳</span> Registering…`; }
+  try {
+    await api.register({ full_name, phone, email: document.getElementById("m-cemail")?.value||null, password, role:"customer" });
+    toast("Customer registered ✓"); closeModal(); customers();
+  } catch (e) { toast(e.message||"Registration failed",true); if(btn){btn.disabled=false;btn.innerHTML="Register";} }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: SUPPLIERS
+// ═══════════════════════════════════════════════════════════════════════════
+async function suppliers() {
+  const pc = document.getElementById("page-content");
+  pc.innerHTML = `<div class="fade-in">
+    <div class="section-hdr">
+      <div><h2>Suppliers</h2><p>Manage drug wholesalers</p></div>
+      <button class="btn btn-primary" onclick="openAddSupplier()">+ Add Supplier</button>
+    </div>
+    <div class="card-grid" id="sup-grid">
+      ${Array(3).fill(`<div class="card"><div class="skeleton" style="height:44px;width:44px;border-radius:12px;margin-bottom:12px;"></div><div class="skeleton" style="height:15px;margin-bottom:6px;"></div><div class="skeleton" style="height:12px;width:70%;margin-bottom:14px;"></div><div class="skeleton" style="height:36px;"></div></div>`).join("")}
+    </div>
+  </div>`;
+
+  let sups = [];
+  try { sups = await api.getSuppliers(); } catch { sups = FB.suppliers; }
+
+  document.getElementById("sup-grid").innerHTML = sups.map(s=>`
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;font-size:22px;">🏭</div>
+        ${statusBadge(s.is_active?"active":"cancelled")}
+      </div>
+      <div style="font-family:'Space Grotesk',system-ui,sans-serif;font-weight:700;font-size:15px;color:#2D0A6E;margin-bottom:3px;">${s.name}</div>
+      <div style="font-size:12px;color:#6B7280;margin-bottom:12px;">${s.contact_name||"—"} · ${s.phone||"—"}</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;" onclick="toast('Purchase order sent to ${s.name} ✓')">+ PO</button>
+        <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center;" onclick="toast('Calling ${s.phone||s.name}…')">📞 Call</button>
+      </div>
+    </div>`).join("");
+}
+
+function openAddSupplier() {
+  openModal("Add Supplier", `
+    <div class="field"><label>Company Name *</label><input id="m-sname" placeholder="PharmaCo MW"/></div>
+    <div class="field"><label>Contact Person</label><input id="m-scontact" placeholder="Full name"/></div>
+    <div class="grid-2">
+      <div class="field"><label>Phone</label><input id="m-sphone" placeholder="+265…"/></div>
+      <div class="field"><label>Email</label><input id="m-semail" type="email" placeholder="email@…"/></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddSupplier()">Save Supplier</button>
+    </div>`);
+}
+
+async function submitAddSupplier() {
+  const name = document.getElementById("m-sname")?.value.trim();
+  if (!name) { toast("Supplier name is required",true); return; }
+  const btn = document.querySelector("#modal-body .btn-primary");
+  if (btn) { btn.disabled=true; btn.innerHTML=`<span class="spin">⟳</span> Saving…`; }
+  try {
+    await api.createSupplier({
+      name,
+      contact_name: document.getElementById("m-scontact")?.value||"",
+      phone: document.getElementById("m-sphone")?.value||"",
+      email: document.getElementById("m-semail")?.value||"",
+    });
+    toast("Supplier added ✓"); closeModal(); suppliers();
+  } catch (e) { toast(e.message||"Failed",true); if(btn){btn.disabled=false;btn.innerHTML="Save Supplier";} }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: REMINDERS
+// ═══════════════════════════════════════════════════════════════════════════
+async function reminders() {
+  const pc = document.getElementById("page-content");
+  pc.innerHTML = `<div class="fade-in">
+    <div class="section-hdr">
+      <div><h2>Medication Reminders</h2><p>Scheduled alerts for customers</p></div>
+      <button class="btn btn-primary" onclick="openAddReminder()">+ New Reminder</button>
+    </div>
+    <div id="rem-list" style="display:flex;flex-direction:column;gap:12px;">
+      ${Array(2).fill(`<div class="card"><div class="skeleton" style="height:50px;"></div></div>`).join("")}
+    </div>
+  </div>`;
+
+  let rems = [];
+  try { rems = await api.getReminders(); } catch { rems = FB.reminders; }
+  renderReminders(rems);
+}
+
+function renderReminders(rems) {
+  const el = document.getElementById("rem-list");
+  if (!el) return;
+  if (rems.length===0) {
+    el.innerHTML=`<div class="card" style="text-align:center;padding:40px;"><div style="font-size:32px;margin-bottom:10px;">⏰</div><div style="color:#6B7280;">No reminders set</div></div>`;
+    return;
+  }
+  el.innerHTML = rems.map(r=>`
+    <div class="card" style="border-color:${r.is_active?"#DDD6FE":"#EDE9FE"};">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:46px;height:46px;border-radius:12px;background:${r.is_active?"#EDE9FE":"#F3F4F6"};display:flex;align-items:center;justify-content:center;font-size:22px;">⏰</div>
+          <div>
+            <div style="font-weight:600;color:${r.is_active?"#1E1235":"#6B7280"};">${r.label}</div>
+            <div style="font-size:12px;color:#7C3AED;font-weight:600;margin-top:2px;">${r.remind_time} · ${dayLabel(r.days)}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${statusBadge(r.is_active?"active":"cancelled")}
+          <button class="btn btn-danger btn-sm" onclick="deleteReminder(${r.id})">Remove</button>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+async function deleteReminder(id) {
+  try { await api.deleteReminder(id); toast("Reminder removed ✓"); }
+  catch { toast("Removed (offline mode) ✓"); }
+  reminders();
+}
+
+function openAddReminder() {
+  openModal("New Reminder", `
+    <div class="field"><label>Reminder Label *</label><input id="m-rlabel" placeholder="Morning BP Tablet"/></div>
+    <div class="grid-2">
+      <div class="field"><label>Time</label><input id="m-rtime" type="time" value="08:00"/></div>
+      <div class="field"><label>Frequency</label>
+        <select id="m-rdays">
+          <option value="1,2,3,4,5,6,7">Every day</option>
+          <option value="1,2,3,4,5">Weekdays only</option>
+          <option value="6,7">Weekends only</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddReminder()">Save Reminder</button>
+    </div>`);
+}
+
+async function submitAddReminder() {
+  const label = document.getElementById("m-rlabel")?.value.trim();
+  if (!label) { toast("Label is required",true); return; }
+  const btn = document.querySelector("#modal-body .btn-primary");
+  if (btn) { btn.disabled=true; btn.innerHTML=`<span class="spin">⟳</span> Saving…`; }
+  try {
+    await api.createReminder({
+      label,
+      remind_time: document.getElementById("m-rtime")?.value||"08:00",
+      days: document.getElementById("m-rdays")?.value||"1,2,3,4,5,6,7",
+    });
+    toast("Reminder created ✓"); closeModal(); reminders();
+  } catch (e) { toast(e.message||"Failed",true); if(btn){btn.disabled=false;btn.innerHTML="Save Reminder";} }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+let _notifs = [...FB.notifications];
+
+function notifications() {
+  UNREAD_COUNT = 0;
+  updateUnreadUI();
+  const pc = document.getElementById("page-content");
+  pc.innerHTML = `<div class="fade-in">
+    <div class="section-hdr">
+      <div><h2>Notifications</h2><p>${_notifs.filter(n=>!n.read).length} unread</p></div>
+      <button class="btn btn-outline" onclick="markAllRead()">Mark all read</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      ${_notifs.map(n => notifCard(n)).join("")}
+    </div>
+  </div>`;
+}
+
+function notifCard(n) {
+  const icons = { warning:"⚠️", order:"🛒", rx:"📄", payment:"💰" };
+  const colors= { warning:"#FEF3C7", order:"#EDE9FE", rx:"#DBEAFE", payment:"#D1FAE5" };
+  return `
+    <div class="card" style="border-color:${!n.read?"#A78BFA":"#DDD6FE"};cursor:pointer;" onclick="markRead(${n.id})">
+      <div style="display:flex;gap:14px;align-items:flex-start;">
+        <div style="width:42px;height:42px;border-radius:11px;background:${colors[n.type]||"#EDE9FE"};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${icons[n.type]||"🔔"}</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+            <span style="font-weight:600;font-size:13px;">${n.title}</span>
+            ${!n.read?`<span style="width:7px;height:7px;border-radius:50%;background:#7C3AED;display:inline-block;flex-shrink:0;"></span>`:""}
+          </div>
+          <div style="font-size:12px;color:#6B7280;line-height:1.5;">${n.body}</div>
+          <div style="font-size:11px;color:#A78BFA;margin-top:5px;">${n.time}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function markRead(id) {
+  _notifs = _notifs.map(n=>n.id===id?{...n,read:true}:n);
+  if (CURRENT_PAGE==="notifications") notifications();
+}
+function markAllRead() {
+  _notifs = _notifs.map(n=>({...n,read:true}));
+  UNREAD_COUNT = 0;
+  updateUnreadUI();
+  if (CURRENT_PAGE==="notifications") notifications();
+}
+function updateUnreadUI() {
+  const cnt = _notifs.filter(n=>!n.read).length;
+  UNREAD_COUNT = cnt;
+  const el = document.getElementById("topbar-unread");
+  if (el) { el.textContent=cnt; el.style.display=cnt>0?"inline":"none"; }
+  const dot = document.getElementById("nav-notif")?.querySelector(".nav-dot");
+  if (dot) dot.style.display = cnt>0?"block":"none";
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BOOT SEQUENCE
+// ═══════════════════════════════════════════════════════════════════════════
+(async function boot() {
+  // Phase 1 — splash 2.8 s
+  await new Promise(r => setTimeout(r, 2800));
+  document.getElementById("splash").classList.add("hide");
+
+  // Show login
+  setTimeout(() => {
+    document.getElementById("splash").style.display = "none";
+    showLogin();
+    updateUnreadUI();
+  }, 650);
+})();
+</script>
+</body>
+</html>
