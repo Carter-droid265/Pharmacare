@@ -1,0 +1,50 @@
+{
+  "name": "PharmaCare — Pharmacy Management",
+  "short_name": "PharmaCare",
+  "description": "Smart Pharmacy Management System by Gerald Mdzalimbo. Lilongwe, Malawi.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#2D0A6E",
+  "theme_color": "#2D0A6E",
+  "orientation": "portrait-primary",
+  "lang": "en-MW",
+  "categories": ["medical", "business", "productivity"],
+  "icons": [
+    { "src": "icon-16.png",  "sizes": "16x16",   "type": "image/png" },
+    { "src": "icon-32.png",  "sizes": "32x32",   "type": "image/png" },
+    { "src": "icon-120.png", "sizes": "120x120", "type": "image/png" },
+    { "src": "icon-144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "icon-152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "PharmaCare Dashboard"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Inventory",
+      "short_name": "Stock",
+      "description": "View and manage drug inventory",
+      "url": "./index.html#inventory",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Orders",
+      "short_name": "Orders",
+      "description": "Manage customer orders",
+      "url": "./index.html#orders",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
