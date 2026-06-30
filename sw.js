@@ -1,5 +1,5 @@
 // PharmaCare Service Worker — Gerald Mdzalimbo
-// v1.0.0 — Network-first for API, Cache-first for shell
+// v1.0.0 — Network-first for API, Cache-first for shell (Claude-generated icons)
 
 const CACHE  = "pharmacare-v1";
 const SHELL  = [
@@ -17,16 +17,14 @@ const SHELL  = [
   "./icon-512.png",
 ];
 
-// ── Install: pre-cache shell ─────────────────────────────────────────────────
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE)
       .then(cache => cache.addAll(SHELL))
-      .then(() => self.skipWaiting())   // activate immediately
+      .then(() => self.skipWaiting())
   );
 });
 
-// ── Activate: purge old caches ──────────────────────────────────────────────
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
@@ -37,16 +35,13 @@ self.addEventListener("activate", (e) => {
   );
 });
 
-// ── Message: skip waiting on demand ─────────────────────────────────────────
 self.addEventListener("message", (e) => {
   if (e.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
-// ── Fetch strategy ───────────────────────────────────────────────────────────
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
 
-  // 1. API calls → Network only; return offline JSON on failure
   if (url.pathname.includes("/api/v1/") || url.pathname === "/health") {
     e.respondWith(
       fetch(e.request).catch(() =>
@@ -59,10 +54,8 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // 2. Non-GET → pass through
   if (e.request.method !== "GET") return;
 
-  // 3. Shell / icons / fonts → Cache first, update in background
   e.respondWith(
     caches.match(e.request).then(cached => {
       const network = fetch(e.request).then(res => {
@@ -74,7 +67,6 @@ self.addEventListener("fetch", (e) => {
       });
       return cached || network;
     }).catch(() =>
-      // Offline fallback — serve index.html for navigation requests
       e.request.mode === "navigate"
         ? caches.match("./index.html")
         : new Response("Offline", { status: 503 })
